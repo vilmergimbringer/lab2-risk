@@ -1,0 +1,265 @@
+% Task 1: VaR and Expected Shortfall
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+dates = readmatrix('timeSeries.xlsx', 'Sheet', 'Problem 1 and 2', 'Range', 'B3:B1649');
+tradeClose = readmatrix('timeSeries.xlsx', 'Sheet', 'Problem 1 and 2', 'Range', 'C3:Q1649');
+
+tradeClose = flipud(tradeClose);
+portfolio_value = 10000000;
+
+%portfolio_value = 10;
+T = length(dates);
+stocks = 15;
+n = 15; % There are 15 different stocks in the portfolio
+omega = zeros(1, n);
+omega(1,:) = 1 / n;
+lambda = 0.94;
+
+
+% Calculating returns matrix for all stocks from t = 1 ... T + 1
+
+R = zeros(T - 1, stocks);
+logR = zeros(T - 1, stocks);
+
+for j = 1:stocks
+    for i = 1 : T-1
+        R(i, j) = ((tradeClose((i+1), j)) - tradeClose(i, j)) / tradeClose(i, j);
+        logR(i,j) = log(tradeClose(i+1,j)/tradeClose(i,j));
+    end
+end
+R = flipud(R);
+Rp = sum(R, 2)./stocks;
+
+%% Subtask 1 (a): Calculation of Value at Risk
+
+C = cov(R);
+sigma= sqrt(omega*C*omega');
+
+VaR95 = norminv(0.95)*sigma*portfolio_value;
+VaR975 = norminv(0.975)*sigma*portfolio_value;
+VaR99 = norminv(0.99)*sigma*portfolio_value;
+
+
+
+%% Subtask 1(b) %% 
+
+% Rp = zeros(T-1,1);
+% LogRp= zeros(T-1,1);
+
+% Calculate portfolio returns
+
+ 
+   LogRp = log(1+ Rp);
+   
+    %Portfolio variance with EWMA
+    VarianceEWMA = zeros(T-501,1);
+    VarianceEWMA(1,1) = LogRp(1,1)^2;
+
+    for t = 2 : T-1
+        VarianceEWMA(t,1) = VarianceEWMA(t-1,1)*lambda + (1-lambda)*LogRp(t-1,1)^2;
+    end
+
+    %relative VaR with EWMA
+relative_VaR_95_1v = zeros(1146, 1);
+relative_VaR_99_1v = zeros(1146, 1);
+
+    for t = 502 : T-1
+        relative_VaR_95_1v(t-501,1) = (1 - exp(- norminv(0.95) * sqrt(VarianceEWMA(t, 1))));
+        relative_VaR_99_1v(t-501,1) = (1 - exp(- norminv(0.99) * sqrt(VarianceEWMA(t, 1))));
+    end
+
+
+
+%% Subtask 1 (c): Calculation of Relative VaR and Expected Shortfall
+
+
+% Initialize arrays for relative VaR and Expected Shortfall
+Histrelative_VaR_95_1v = zeros(T - 501, 1);
+Histrelative_VaR_99_1v = zeros(T - 501, 1);
+expected_shortfall_1v = zeros(T - 501, 1);
+
+% Historical simulation with rolling window
+for t = 502:T-1
+    % Extract the historical portfolio returns for the rolling window
+    historical_returns = LogRp(t-499:t, 1);
+
+    % Calculate portfolio variance and volatility based on the rolling window
+    rolling_variance = var(historical_returns);
+    rolling_volatility = sqrt(rolling_variance);
+
+    % Calculate relative VaR for t+1 based on the rolling window
+    Histrelative_VaR_95_1v(t-501, 1) = (1 - exp(-norminv(0.95) * rolling_volatility));
+
+    % Calculate relative VaR for t+1 based on the rolling window
+    Histrelative_VaR_99_1v(t-501, 1) = (1 - exp(-norminv(0.99) * rolling_volatility));
+
+    % Calculate Expected Shortfall for t+1 based on the rolling window
+    exceedances = historical_returns(historical_returns < -Histrelative_VaR_95_1v(t-501, 1));
+    expected_shortfall_1v(t-501, 1) = -mean(exceedances);
+end
+
+
+
+%% Subtask 1 (d) %%
+
+
+% Initialize arrays for relative VaR and Expected Shortfall
+HW_relative_VaR_95_1v = zeros(T - 501, 1);
+HW_relative_VaR_99_1v = zeros(T - 501, 1);
+
+% Initialize the EWMA volatility
+ewma_volatility = zeros(T - 1, 1);
+
+% Initialize the first value of EWMA volatility using the corrected formula
+R_bar = mean(LogRp(1:20, 1));
+ewma_volatility(1, 1) = (1/19) * sum((LogRp(1:20, 1) - R_bar).^2);
+
+% Historical simulation with rolling window
+for t = 501:T-1
+    % Extract the historical portfolio returns for the rolling window
+    historical_returns = LogRp(t-499:t, 1);
+
+   % Estimate portfolio volatility using EWMA
+    ewma_volatility(t, 1) = 0.94 * ewma_volatility(t-1, 1) + (1 - 0.94) * historical_returns(end)^2;
+
+    % Calculate relative VaR for t+1 based on the estimated volatility
+    HW_relative_VaR_95_1v(t-500, 1) = (1 - exp( -norminv(0.95) * sqrt(ewma_volatility(t, 1))));
+
+    % Calculate relative VaR for t+1 based on the estimated volatility
+    HW_relative_VaR_99_1v(t-500, 1) = (1 - exp( -norminv(0.99) * sqrt(ewma_volatility(t, 1))));
+
+end
+% 
+%  for t = 2 : T-1
+%         VarianceEWMA(t,1) = VarianceEWMA(t-1,1)*lambda + (1-lambda)*LogRp(t-1,1)^2;
+%     end
+
+
+%% Subtask 1 (e) %%
+
+subtaskB_FRT = FailureRateTest(Rp, (relative_VaR_95_1v), 0.05, 0.95);
+subtaskB2_FRT = FailureRateTest(Rp, (relative_VaR_99_1v), 0.01, 0.99);
+subtaskC_FRT = FailureRateTest(Rp, (Histrelative_VaR_95_1v), 0.05, 0.95);
+subtaskC2_FRT = FailureRateTest(Rp, (Histrelative_VaR_99_1v), 0.01, 0.99);
+subtaskD_FRT = FailureRateTest(Rp, (HW_relative_VaR_99_1v), 0.05, 0.95);
+subtaskD2_FRT = FailureRateTest(Rp, (HW_relative_VaR_99_1v), 0.01, 0.99);
+
+%% Subtask 1 (f) %%
+
+SDTestsubtaskB = SerBer(Rp, (relative_VaR_95_1v), 0.05);
+SDTestsubtaskB2 = SerBer(Rp, (relative_VaR_99_1v), 0.01);
+SDTestsubtaskC = SerBer(Rp, (Histrelative_VaR_95_1v), 0.05);
+SDTestsubtaskC2 = SerBer(Rp, (Histrelative_VaR_99_1v), 0.01);
+SDTestsubtaskD= SerBer(Rp, (HW_relative_VaR_99_1v), 0.05);
+SDTestsubtaskD2 = SerBer(Rp, (HW_relative_VaR_99_1v), 0.01);
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Task 2: Model Training
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Subtask 2.1: Split Data
+% Split the data into training and testing sets.
+%[train_data, test_data] = splitData(cleaned_data);
+
+%% Subtask 2.2: Train Model
+% Train a machine learning model using the training data.
+%model = trainModel(train_data);
+
+%% Subtask 2.3: Evaluate Model
+% Evaluate the model using the testing data.
+%accuracy = evaluateModel(model, test_data);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Task 3: Results Analysis
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Subtask 3.1: Display Results
+% Display the accuracy of the trained model.
+%disp(['Model Accuracy: ' num2str(accuracy)]);
+
+%% Subtask 3.2: Visualize Results
+% Visualize the results using plots or other visualization techniques.
+%visualizeResults(model, test_data);
+% %% Subtask 1 (c): Calculation of Relative VaR and Expected Shortfall
+% 
+% 
+% % omega = alpha(i) / portfolio_value;
+% % 
+% % omega_vector = ones(15, 1) * omega(i);
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % Task 2: Model Training
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% %% Subtask 2.1: Split Data
+% % Split the data into training and testing sets.
+% [train_data, test_data] = splitData(cleaned_data);
+% 
+% %% Subtask 2.2: Train Model
+% % Train a machine learning model using the training data.
+% model = trainModel(train_data);
+% 
+% %% Subtask 2.3: Evaluate Model
+% % Evaluate the model using the testing data.
+% accuracy = evaluateModel(model, test_data);
+% 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % Task 3: Results Analysis
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% %% Subtask 3.1: Display Results
+% % Display the accuracy of the trained model.
+% disp(['Model Accuracy: ' num2str(accuracy)]);
+% 
+% %% Subtask 3.2: Visualize Results
+% % Visualize the results using plots or other visualization techniques.
+% visualizeResults(model, test_data);
+
+function res = FailureRateTest(Rp, relVaR, alpha, c)
+    n = size(Rp, 1);
+    lowerlimit = norminv(alpha/2);
+    upperlimit = norminv(1-(alpha/2));
+    count = 0;
+    for j = 1:(n-502)
+        count = count + (Rp(j) < - relVaR(j));
+    end
+    Z = (count-(n-501)*(1-c))/(sqrt((n-501)*(1-c)*(1-(1-c))));
+    res = (Z < lowerlimit || Z > upperlimit);
+end
+
+function res = SerBer(r, VaR, alpha)
+    n = size(r, 1);
+    z = chi2inv((1-alpha), 1);
+    nXY = zeros(2, 2);
+    prev = 0;
+    for j = 1:(n-501)
+       curr = (r(j) < - VaR(j));
+       nXY(prev+1, curr+1) = nXY(prev+1, curr+1) + 1;
+       prev = curr;
+    end
+    res = VL(nXY(1,1), nXY(1,2), nXY(2,1), nXY(2,2)) > z;
+end
+
+function res = VL(n00, n01, n10, n11)
+    pi = (n01 + n11) / (n00 + n01 + n10 + n11);
+    pi01 = n01 / (n00 + n01);
+    pi11 = n11 / (n10 + n11);
+    term1=-2*log(((1-pi)^(n00+n10)) * (pi^(n01+n11)));
+    term2=2*log((1-pi01)^(n00)*pi01^(n01)*(1-pi11)^(n10)*pi11^(n11));
+    res = term1 + term2;
+end
