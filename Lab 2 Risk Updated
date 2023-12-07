@@ -70,6 +70,16 @@ relative_VaR_99_1v = zeros(1146, 1);
     end
 
 
+% Plotting for Subtask 1(b)
+figure;
+subplot(2, 1, 1);
+plot(relative_VaR_95_1v, 'LineWidth', 1.5, 'DisplayName', 'Relative VaR (95%)');
+hold on;
+plot(relative_VaR_99_1v, 'LineWidth', 1.5, 'DisplayName', 'Relative VaR (99%)');
+title('Subtask 1(b): Relative VaR Estimates');
+legend('show');
+hold off;
+
 
 %% Subtask 1 (c): Calculation of Relative VaR and Expected Shortfall
 
@@ -99,6 +109,20 @@ for t = 502:T-1
     expected_shortfall_1v(t-501, 1) = -mean(exceedances);
 end
 
+% Plotting for Subtask 1(c)
+figure;
+subplot(2, 1, 1);
+plot(Histrelative_VaR_95_1v, 'LineWidth', 1.5, 'DisplayName', 'Relative VaR (95%)');
+hold on;
+plot(Histrelative_VaR_99_1v, 'LineWidth', 1.5, 'DisplayName', 'Relative VaR (99%)');
+title('Subtask 1(c): Relative VaR Estimates');
+legend('show');
+hold off;
+
+subplot(2, 1, 2);
+plot(expected_shortfall_1v, 'LineWidth', 1.5, 'DisplayName', 'Expected Shortfall');
+title('Subtask 1(c): Expected Shortfall Estimates');
+legend('show');
 
 
 %% Subtask 1 (d) %%
@@ -135,6 +159,17 @@ end
 %         VarianceEWMA(t,1) = VarianceEWMA(t-1,1)*lambda + (1-lambda)*LogRp(t-1,1)^2;
 %     end
 
+% Plotting for Subtask 1(d)
+figure;
+subplot(2, 1, 1);
+plot(HW_relative_VaR_95_1v, 'LineWidth', 1.5, 'DisplayName', 'Relative VaR (95%)');
+hold on;
+plot(HW_relative_VaR_99_1v, 'LineWidth', 1.5, 'DisplayName', 'Relative VaR (99%)');
+title('Subtask 1(d): Relative VaR Estimates');
+legend('show');
+hold off;
+
+
 
 %% Subtask 1 (e) %%
 
@@ -145,6 +180,15 @@ subtaskC2_FRT = FailureRateTest(Rp, (Histrelative_VaR_99_1v), 0.01, 0.99);
 subtaskD_FRT = FailureRateTest(Rp, (HW_relative_VaR_99_1v), 0.05, 0.95);
 subtaskD2_FRT = FailureRateTest(Rp, (HW_relative_VaR_99_1v), 0.01, 0.99);
 
+% Display results for Subtask 1(e)
+disp('Results for Subtask 1(e): Failure Rate Tests');
+disp(['Subtask B (95%): ' num2str(subtaskB_FRT)]);
+disp(['Subtask B (99%): ' num2str(subtaskB2_FRT)]);
+disp(['Subtask C (95%): ' num2str(subtaskC_FRT)]);
+disp(['Subtask C (99%): ' num2str(subtaskC2_FRT)]);
+disp(['Subtask D (95%): ' num2str(subtaskD_FRT)]);
+disp(['Subtask D (99%): ' num2str(subtaskD2_FRT)]);
+
 %% Subtask 1 (f) %%
 
 SDTestsubtaskB = SerBer(Rp, (relative_VaR_95_1v), 0.05);
@@ -154,7 +198,14 @@ SDTestsubtaskC2 = SerBer(Rp, (Histrelative_VaR_99_1v), 0.01);
 SDTestsubtaskD= SerBer(Rp, (HW_relative_VaR_99_1v), 0.05);
 SDTestsubtaskD2 = SerBer(Rp, (HW_relative_VaR_99_1v), 0.01);
 
-
+% Display results for Subtask 1(f)
+disp('Results for Subtask 1(f): Serial Dependence Tests');
+disp(['Subtask B (95%): ' num2str(SDTestsubtaskB)]);
+disp(['Subtask B (99%): ' num2str(SDTestsubtaskB2)]);
+disp(['Subtask C (95%): ' num2str(SDTestsubtaskC)]);
+disp(['Subtask C (99%): ' num2str(SDTestsubtaskC2)]);
+disp(['Subtask D (95%): ' num2str(SDTestsubtaskD)]);
+disp(['Subtask D (99%): ' num2str(SDTestsubtaskD2)]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Task 2: Model Training
